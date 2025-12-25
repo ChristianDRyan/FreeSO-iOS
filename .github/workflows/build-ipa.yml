@@ -1,29 +1,37 @@
 name: Build FreeSO iOS (Jailbreak)
 
 on:
-  workflow_dispatch: # Botão manual para iniciar o build
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # MUDANÇA IMPORTANTE: Usar macos-12 (Intel) em vez de latest (ARM/M1)
+    # O macos-12 já vem com Mono instalado e compatibilidade melhor para código antigo
+    runs-on: macos-12
 
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
         with:
-          submodules: recursive # Baixa as dependências do git
+          submodules: recursive
+
+      # Garantia extra: Instalar Mono se não estiver presente (geralmente o macos-12 já tem)
+      - name: Verificar/Instalar Mono
+        run: |
+          mono --version || brew install mono
 
       - name: Setup NuGet
         uses: NuGet/setup-nuget@v1.2
 
       - name: Restore NuGet Packages
-        # Tenta restaurar as dependências do projeto
+        # Tenta restaurar a solução. Se o arquivo estiver na raiz, o comando abaixo funciona.
+        # Se der erro de arquivo não encontrado, troque para "TSOClient/FreeSO.sln"
         run: |
-            nuget restore TSOClient/FreeSO.sln
+            nuget restore FreeSO.sln
 
       - name: Build do Projeto iOS
         run: |
-          # Caminho exato confirmado pela sua imagem
+          # Compila usando o caminho que você confirmou (FSOiOS.csproj)
           msbuild TSOClient/FSO.iOS/FSOiOS.csproj \
             /p:Configuration=Release \
             /p:Platform=iPhone \
@@ -35,7 +43,7 @@ jobs:
       - name: Criar estrutura do IPA
         run: |
           mkdir Payload
-          # Procura onde o .app foi gerado (pode variar dependendo da versão do MSBuild)
+          # Procura o .app gerado (o caminho pode variar no Xamarin antigo)
           APP_PATH=$(find TSOClient -type d -name "FSOiOS.app" | grep "Release" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
