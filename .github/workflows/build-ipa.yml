@@ -5,7 +5,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest # Volta para a máquina rápida
+    # MUDANÇA: macos-13 é a versão Intel estável que ainda tem Xamarin/Mono nativo
+    runs-on: macos-13
+    
+    # Define um tempo limite para não travar sua conta se a fila estiver grande
+    timeout-minutes: 30
 
     steps:
       - name: Checkout do código
@@ -13,20 +17,16 @@ jobs:
         with:
           submodules: recursive
 
-      # ESTE É O PULO DO GATO: Instala o Mono manualmente
-      - name: Instalar Mono (Necessário para C# antigo)
-        run: brew install mono
-
       - name: Setup NuGet
         uses: NuGet/setup-nuget@v1.2
 
       - name: Restore NuGet Packages
-        # Usa o caminho padrão que geralmente funciona nesse repo
         run: |
             nuget restore TSOClient/FreeSO.sln
 
       - name: Build do Projeto iOS
         run: |
+          # Como o macos-13 já tem o msbuild no lugar certo, isso deve funcionar direto
           msbuild TSOClient/FSO.iOS/FSOiOS.csproj \
             /p:Configuration=Release \
             /p:Platform=iPhone \
@@ -38,7 +38,7 @@ jobs:
       - name: Criar estrutura do IPA
         run: |
           mkdir Payload
-          # Procura o .app gerado
+          # Busca o app gerado. No macos-13 Intel o caminho costuma ser bin/iPhone/Release
           APP_PATH=$(find TSOClient -type d -name "FSOiOS.app" | grep "Release" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
