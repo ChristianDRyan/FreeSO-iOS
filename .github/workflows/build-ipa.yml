@@ -5,9 +5,7 @@ on:
 
 jobs:
   build:
-    # MUDANÇA IMPORTANTE: Usar macos-12 (Intel) em vez de latest (ARM/M1)
-    # O macos-12 já vem com Mono instalado e compatibilidade melhor para código antigo
-    runs-on: macos-12
+    runs-on: macos-latest # Volta para a máquina rápida
 
     steps:
       - name: Checkout do código
@@ -15,23 +13,20 @@ jobs:
         with:
           submodules: recursive
 
-      # Garantia extra: Instalar Mono se não estiver presente (geralmente o macos-12 já tem)
-      - name: Verificar/Instalar Mono
-        run: |
-          mono --version || brew install mono
+      # ESTE É O PULO DO GATO: Instala o Mono manualmente
+      - name: Instalar Mono (Necessário para C# antigo)
+        run: brew install mono
 
       - name: Setup NuGet
         uses: NuGet/setup-nuget@v1.2
 
       - name: Restore NuGet Packages
-        # Tenta restaurar a solução. Se o arquivo estiver na raiz, o comando abaixo funciona.
-        # Se der erro de arquivo não encontrado, troque para "TSOClient/FreeSO.sln"
+        # Usa o caminho padrão que geralmente funciona nesse repo
         run: |
-            nuget restore FreeSO.sln
+            nuget restore TSOClient/FreeSO.sln
 
       - name: Build do Projeto iOS
         run: |
-          # Compila usando o caminho que você confirmou (FSOiOS.csproj)
           msbuild TSOClient/FSO.iOS/FSOiOS.csproj \
             /p:Configuration=Release \
             /p:Platform=iPhone \
@@ -43,11 +38,11 @@ jobs:
       - name: Criar estrutura do IPA
         run: |
           mkdir Payload
-          # Procura o .app gerado (o caminho pode variar no Xamarin antigo)
+          # Procura o .app gerado
           APP_PATH=$(find TSOClient -type d -name "FSOiOS.app" | grep "Release" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "❌ Erro: O arquivo FSOiOS.app não foi encontrado. O build falhou?"
+            echo "❌ Erro: O arquivo FSOiOS.app não foi encontrado."
             exit 1
           fi
           
