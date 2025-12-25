@@ -1,15 +1,14 @@
-name: Build FreeSO iOS (Jailbreak)
+name: Build FreeSO iOS (Legacy)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    # MUDANÇA: macos-13 é a versão Intel estável que ainda tem Xamarin/Mono nativo
-    runs-on: macos-13
-    
-    # Define um tempo limite para não travar sua conta se a fila estiver grande
-    timeout-minutes: 30
+    # A única versão que tem Xamarin/Mono nativo.
+    # Tenha paciência, a fila pode demorar 30min+
+    runs-on: macos-12
+    timeout-minutes: 120 # Dá 2 horas de prazo antes de desistir
 
     steps:
       - name: Checkout do código
@@ -26,7 +25,6 @@ jobs:
 
       - name: Build do Projeto iOS
         run: |
-          # Como o macos-13 já tem o msbuild no lugar certo, isso deve funcionar direto
           msbuild TSOClient/FSO.iOS/FSOiOS.csproj \
             /p:Configuration=Release \
             /p:Platform=iPhone \
@@ -38,7 +36,7 @@ jobs:
       - name: Criar estrutura do IPA
         run: |
           mkdir Payload
-          # Busca o app gerado. No macos-13 Intel o caminho costuma ser bin/iPhone/Release
+          # No macos-12 o caminho costuma ser bin/iPhone/Release
           APP_PATH=$(find TSOClient -type d -name "FSOiOS.app" | grep "Release" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
