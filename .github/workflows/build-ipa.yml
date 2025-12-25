@@ -1,0 +1,57 @@
+name: Build FreeSO iOS (Jailbreak)
+
+on:
+  workflow_dispatch: # Botão manual para iniciar o build
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive # Baixa as dependências do git
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1.2
+
+      - name: Restore NuGet Packages
+        # Tenta restaurar as dependências do projeto
+        run: |
+            nuget restore TSOClient/FreeSO.sln
+
+      - name: Build do Projeto iOS
+        run: |
+          # Caminho exato confirmado pela sua imagem
+          msbuild TSOClient/FSO.iOS/FSOiOS.csproj \
+            /p:Configuration=Release \
+            /p:Platform=iPhone \
+            /p:BuildIpa=false \
+            /p:CodesignEntitlements="" \
+            /p:CodesignKey="-" \
+            /p:CodesignProvision=""
+
+      - name: Criar estrutura do IPA
+        run: |
+          mkdir Payload
+          # Procura onde o .app foi gerado (pode variar dependendo da versão do MSBuild)
+          APP_PATH=$(find TSOClient -type d -name "FSOiOS.app" | grep "Release" | head -n 1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ Erro: O arquivo FSOiOS.app não foi encontrado. O build falhou?"
+            exit 1
+          fi
+          
+          echo "📦 App encontrado em: $APP_PATH"
+          cp -R "$APP_PATH" Payload/
+
+      - name: Comprimir para .ipa
+        run: |
+          zip -r FreeSO_Jailbreak.ipa Payload
+
+      - name: Upload do IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: freeso-ios-ipa
+          path: FreeSO_Jailbreak.ipa
